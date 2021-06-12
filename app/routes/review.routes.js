@@ -10,10 +10,10 @@ module.exports = app => {
   router.get("/", reviewController.fetchReviews);
 
   // Get average monthly ratings per store
-  router.get("/monthlyRating/:store/:month", reviewController.getAverageMonthlyRating);
+  router.get("/monthlyRating", reviewController.getAverageMonthlyRating);
 
   //  Get total ratings for each category
-  router.get("/:store", reviewController.getTotalRatingForCategory);
+  router.get("/totalRating", reviewController.getTotalRatingForCategory);
 
   app.use("/api/reviews", router);
 };

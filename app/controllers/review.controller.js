@@ -1,4 +1,5 @@
 const db = require("../models");
+const helper = require("../helpers/review.helper");
 const ReviewModel = db.reviews;
 
 // Accepts reviews and stores them
@@ -11,7 +12,9 @@ exports.create = (req, res) => {
   let invalidRequests = [];
   let validRequests = [];
   payload.filter(el => {
-    if (!el.review || !el.author || !el.review_source || !el.rating || !el.product_name) {
+    let isInvalid = helper.isInvidPayload(el)
+    if (isInvalid) {
+      el.error = isInvalid;
       invalidRequests.push(el);
     }else{
       if(!el.reviewed_date){
@@ -22,16 +25,21 @@ exports.create = (req, res) => {
   })
  
   if(!validRequests.length){
-    res.status(400).send({ message: "No valid request in payload!" });
+    res.status(400).send({ message: "No valid request in payload!", invalidRequests });
     return;
   }
 
   // Save ReviewModel in the database
-  reviewModel.insertMany(validRequests).then(data => {
+  ReviewModel.insertMany(validRequests).then(data => {
+     let resdata = {
+       data,
+       success: true
+     }
       if(invalidRequests.length){
-        data.invalidRequests = invalidRequests;
+        resdata.info = 'Few record did saved, check invalidRequests'
+        resdata.invalidRequests = invalidRequests;
       }
-      res.send(data);
+      res.send(resdata);
     }).catch(err => {
       res.status(500).send({
         message: err.message || "Some error occurred while creating the review."
@@ -51,7 +59,13 @@ exports.fetchReviews = (req, res) => {
   let productName = req.query.productName;
   let query = {}
   if(date){
-    query.reviewed_date = date;
+    const startOfDay = new Date(new Date(date).setUTCHours(0, 0, 0, 0)).toISOString()
+    const endOfDay = new Date(new Date(date).setUTCHours(23, 59, 59, 999)).toISOString()
+        
+    query.reviewed_date = {
+      $gte: startOfDay, 
+      $lt: endOfDay
+    }
   }
   if(rating){
     query.rating = rating;
@@ -62,7 +76,7 @@ exports.fetchReviews = (req, res) => {
 
   ReviewModel.find(query)
     .then(data => {
-      res.send(data);
+      res.send({success: true, data});
     })
     .catch(err => {
       res.status(500).send({
@@ -74,17 +88,74 @@ exports.fetchReviews = (req, res) => {
 
 // Allows to get average monthly ratings per store.
 exports.getAverageMonthlyRating = (req, res) => {
-  // to be implemented
-  const store = req.param.store;
-  const month = req.param.month;
+  const productName = req.query.productName;
+  // if(!productName){
+  //   res.status(400).send({ message: "productName can not be empty!" });
+  //   return;
+  // }
 
-  return res.send('to be implemented')
+  let query = {}
+  if(productName){
+    query.product_name = productName;
+  }
+  let result = {};
+  let kayMap = {}
+  ReviewModel.find(query)
+    .then(data => {
+      data.forEach(el => {
+        let  {product_name, rating, reviewed_date} = el;
+        let year = new Date(reviewed_date).getFullYear();
+        let month = new Date(reviewed_date).getMonth();
+        let key =  `${product_name}..${year}..${month}`
+        kayMap[key] = kayMap[key] ? kayMap[key] : {}
+        kayMap[key]['totalRating'] = kayMap[key]['totalRating'] ? kayMap[key]['totalRating'] + rating : rating;
+        kayMap[key]['count'] = kayMap[key]['count'] ? kayMap[key]['count'] + 1 : 1;
+      });
+
+      Object.keys(kayMap).forEach(key => {
+        let keysArr = key.split('..');
+        let product_name= keysArr[0];
+        let year= keysArr[1];
+        let month= keysArr[2];
+        result[product_name] = result[product_name] ? result[product_name] : {};
+        result[product_name][year] = result[product_name][year] ? result[product_name][year] : {};
+        let yearlyData = result[product_name][year];
+        yearlyData[month] = (kayMap[key]['totalRating'] / kayMap[key]['count']).toFixed(2);
+      })
+      res.send({success: true, data: result})
+    })
+    .catch(err => {
+      res.status(500).send({
+        message:
+          err.message || "Some error occurred while retrieving reviews."
+      });
+    });
 }
 // Allows to get total ratings for each category. Meaning, how many 5*, 4*, 3* and so on
 exports.getTotalRatingForCategory = (req, res) => {
-  // to be implemented
-  const store = req.param.store;
-  return res.send('to be implemented')
+
+  let productName = req.query.productName;
+  let query = {}
+  if(productName){
+    query.product_name = productName;
+  }
+  let result = {};
+  ReviewModel.find(query)
+    .then(data => {
+      data.forEach(el => {
+        let  {product_name, rating} = el
+        result[product_name] = result[product_name] ? result[product_name] : {};
+        let key = 'Rating ' + rating;
+        result[product_name][key] = result[product_name][key] ? result[product_name][key] + 1 : 1
+      });
+      res.send({success: true, data: result})
+    })
+    .catch(err => {
+      res.status(500).send({
+        message:
+          err.message || "Some error occurred while retrieving reviews."
+      });
+    });
 }
 
 
