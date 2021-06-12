@@ -1,9 +1,10 @@
 # Review App
 
-# prerequisite
+# Prerequisite
 * Node JS
 * MongoDB
 * GIT
+* Creat a db with name 'reviewDb'
 
 # Installation
 
