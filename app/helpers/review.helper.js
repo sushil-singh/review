@@ -1,18 +1,57 @@
+const db = require("../models");
+const ReviewModel = db.reviews;
+
 exports.isInvidPayload = (input) => {
-    if (!input.review ){
-       return 'Missing "review" property'
-    }else if(!input.author ){
-        return 'Missing "author" property'
-    }else if(!input.review_source ){
-        return 'Missing "review_source" property'
-    }else if(!input.rating ){
-        return 'Missing "rating" property'
-    }else if(!input.product_name ){
-        return 'Missing "product_name" property'
-    }else if(isNaN(input.rating) ){
-        return '"Not a valid rating'
-    }else if(input.rating <  1 || input.rating >  5){
-        return 'rating can not be less than 1 and above 5'
+    let missingFields = [];
+    if (!input.review) {
+        missingFields.push('review');
+    } 
+    if (!input.author) {
+        missingFields.push('author');
+    } 
+    if (!input.review_source) {
+        missingFields.push('review_source');
+    } 
+    if (!input.rating) {
+        missingFields.push('rating');
+    } 
+    if (!input.product_name) {
+        missingFields.push('product_name');
+    } 
+    if (isNaN(input.rating) || input.rating < 1 || input.rating > 5) {
+        missingFields.push('rating');
+    } 
+    if (!input.reviewed_date || new Date(input.reviewed_date) == 'Invalid Date') {
+        missingFields.push('reviewed_date');
     }
-    return false
+
+    if(missingFields.length) {
+        return {
+            isValid: false,
+            error: `Missing/invalid fields : ${missingFields.join(',')}`
+        }
+    }
+    return {
+        isValid: true
+    }
+}
+
+exports.insertMany = (validRequests) => {
+    return new Promise((resolve, reject) => {
+        ReviewModel.insertMany(validRequests).then(data => {
+            resolve(data)
+        }).catch(err => {
+            reject(err.message || "Some error occurred while creating the review.");
+        });
+    });
+}
+
+exports.findReviews = (queryObj) => {
+    return new Promise((resolve, reject) => {
+        ReviewModel.find(queryObj).then(data => {
+            resolve(data);
+        }).catch(err => {
+            reject(err.message || "Some error occurred while retrieving reviews.")
+        });
+    });
 }
