@@ -107,20 +107,26 @@ exports.getAverageMonthlyRating = async (req, res) => {
       const month = new Date(reviewed_date).getMonth() + 1;
       const key = `${product_name}..${year}..${month}`
       kayMap[key] = kayMap[key] ? kayMap[key] : {}
-      kayMap[key]['totalRating'] = kayMap[key]['totalRating'] ? kayMap[key]['totalRating'] + rating : rating;
-      kayMap[key]['count'] = kayMap[key]['count'] ? kayMap[key]['count'] + 1 : 1;
-    });
+      let totalRating = kayMap[key]['totalRating'] ? kayMap[key]['totalRating'] + rating : rating;
+      let count = kayMap[key]['count'] ? kayMap[key]['count'] + 1 : 1;
+      kayMap[key] = {totalRating, count}
 
-    Object.keys(kayMap).forEach(key => {
-      const keysArr = key.split('..');
-      const product_name = keysArr[0];
-      const year = keysArr[1];
-      const month = keysArr[2];
       result[product_name] = result[product_name] ? result[product_name] : {};
       result[product_name][year] = result[product_name][year] ? result[product_name][year] : {};
-      let yearlyData = result[product_name][year];
-      yearlyData[month] = (kayMap[key]['totalRating'] / kayMap[key]['count']).toFixed(2);
+      result[product_name][year][month] = (totalRating / count).toFixed(2);
+
     });
+
+    // Object.keys(kayMap).forEach(key => {
+    //   const keysArr = key.split('..');
+    //   const product_name = keysArr[0];
+    //   const year = keysArr[1];
+    //   const month = keysArr[2];
+    //   result[product_name] = result[product_name] ? result[product_name] : {};
+    //   result[product_name][year] = result[product_name][year] ? result[product_name][year] : {};
+    //   let yearlyData = result[product_name][year];
+    //   yearlyData[month] = (kayMap[key]['totalRating'] / kayMap[key]['count']).toFixed(2);
+    // });
 
     res.status(200).send({ success: true, data: result });
 
