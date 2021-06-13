@@ -11,7 +11,7 @@
 ```bash
 
     // clone the application from repository
-    git clone <repo>
+    git clone https://github.com/sushil-singh/review.git
 
 ```
 
